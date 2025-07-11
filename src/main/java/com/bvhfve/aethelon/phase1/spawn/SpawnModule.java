@@ -120,8 +120,25 @@ public class SpawnModule implements AethelonModule {
      */
     private void configureNaturalSpawning() {
         // Check if natural spawning is enabled
+        boolean naturalSpawningEnabled = false;
+        int spawnWeight = 5;
+        int minGroupSize = 1;
+        int maxGroupSize = 1;
+        
+        // Safely access configuration with fallbacks
         if (com.bvhfve.aethelon.core.config.AethelonConfig.INSTANCE != null && 
-            com.bvhfve.aethelon.core.config.AethelonConfig.INSTANCE.phases.phase1.enableNaturalSpawning) {
+            com.bvhfve.aethelon.core.config.AethelonConfig.INSTANCE.phases != null &&
+            com.bvhfve.aethelon.core.config.AethelonConfig.INSTANCE.phases.phase1 != null) {
+            
+            naturalSpawningEnabled = com.bvhfve.aethelon.core.config.AethelonConfig.INSTANCE.phases.phase1.enableNaturalSpawning;
+            spawnWeight = com.bvhfve.aethelon.core.config.AethelonConfig.INSTANCE.phases.phase1.spawnWeight;
+            minGroupSize = com.bvhfve.aethelon.core.config.AethelonConfig.INSTANCE.phases.phase1.minGroupSize;
+            maxGroupSize = com.bvhfve.aethelon.core.config.AethelonConfig.INSTANCE.phases.phase1.maxGroupSize;
+        } else {
+            AethelonCore.LOGGER.warn("AethelonConfig not properly initialized, using default spawn settings");
+        }
+        
+        if (naturalSpawningEnabled) {
             // Add spawning to deep ocean biomes
             BiomeModifications.addSpawn(
                 BiomeSelectors.includeByKey(
@@ -132,16 +149,14 @@ public class SpawnModule implements AethelonModule {
                 ),
                 SpawnGroup.WATER_CREATURE,
                 EntityTypeProvider.getAethelonEntityType(),
-                com.bvhfve.aethelon.core.config.AethelonConfig.INSTANCE.phases.phase1.spawnWeight,
-                com.bvhfve.aethelon.core.config.AethelonConfig.INSTANCE.phases.phase1.minGroupSize,
-                com.bvhfve.aethelon.core.config.AethelonConfig.INSTANCE.phases.phase1.maxGroupSize
+                spawnWeight,
+                minGroupSize,
+                maxGroupSize
             );
             
             AethelonCore.LOGGER.debug("Configured Aethelon natural spawning in deep ocean biomes");
             AethelonCore.LOGGER.debug("Spawn weight: {}, Group size: {}-{}", 
-                com.bvhfve.aethelon.core.config.AethelonConfig.INSTANCE.phases.phase1.spawnWeight,
-                com.bvhfve.aethelon.core.config.AethelonConfig.INSTANCE.phases.phase1.minGroupSize,
-                com.bvhfve.aethelon.core.config.AethelonConfig.INSTANCE.phases.phase1.maxGroupSize);
+                spawnWeight, minGroupSize, maxGroupSize);
         } else {
             AethelonCore.LOGGER.info("Natural spawning disabled in configuration");
         }

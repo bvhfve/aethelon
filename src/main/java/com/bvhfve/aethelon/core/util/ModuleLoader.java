@@ -139,20 +139,59 @@ public class ModuleLoader {
     private void loadModulesInOrder(Set<String> enabledModules, Map<String, String> moduleClasses) {
         Set<String> remaining = new HashSet<>(enabledModules);
         Set<String> processed = new HashSet<>();
+        int iteration = 0;
+        
+        if (configManager.getDebugConfig().logModuleLoading) {
+            AethelonCore.LOGGER.debug("Starting dependency resolution for modules: {}", enabledModules);
+            // Log dependencies for each module
+            for (String moduleName : enabledModules) {
+                List<String> deps = getModuleDependencies(moduleName, moduleClasses);
+                AethelonCore.LOGGER.debug("Module '{}' dependencies: {}", moduleName, deps);
+            }
+        }
         
         // Simple dependency resolution loop
         while (!remaining.isEmpty()) {
+            iteration++;
             Set<String> readyToLoad = new HashSet<>();
             
+            if (configManager.getDebugConfig().logModuleLoading) {
+                AethelonCore.LOGGER.debug("Dependency resolution iteration {}: remaining={}, processed={}", 
+                    iteration, remaining, processed);
+            }
+            
             for (String moduleName : remaining) {
-                if (canLoadModule(moduleName, processed)) {
+                boolean canLoad = canLoadModule(moduleName, processed);
+                if (configManager.getDebugConfig().logModuleLoading) {
+                    List<String> deps = getModuleDependencies(moduleName, moduleClasses);
+                    List<String> missingDeps = new ArrayList<>();
+                    for (String dep : deps) {
+                        if (!processed.contains(dep)) {
+                            missingDeps.add(dep);
+                        }
+                    }
+                    AethelonCore.LOGGER.debug("Module '{}' can load: {} (missing deps: {})", 
+                        moduleName, canLoad, missingDeps);
+                }
+                
+                if (canLoad) {
                     readyToLoad.add(moduleName);
                 }
             }
             
             if (readyToLoad.isEmpty()) {
                 AethelonCore.LOGGER.error("Circular dependency detected in modules: {}", remaining);
+                AethelonCore.LOGGER.error("Processed modules: {}", processed);
+                // Log detailed dependency information for debugging
+                for (String moduleName : remaining) {
+                    List<String> deps = getModuleDependencies(moduleName, moduleClasses);
+                    AethelonCore.LOGGER.error("Stuck module '{}' dependencies: {}", moduleName, deps);
+                }
                 break;
+            }
+            
+            if (configManager.getDebugConfig().logModuleLoading) {
+                AethelonCore.LOGGER.debug("Ready to load in iteration {}: {}", iteration, readyToLoad);
             }
             
             // Load ready modules
@@ -161,6 +200,11 @@ public class ModuleLoader {
                 processed.add(moduleName);
                 remaining.remove(moduleName);
             }
+        }
+        
+        if (configManager.getDebugConfig().logModuleLoading) {
+            AethelonCore.LOGGER.debug("Dependency resolution completed in {} iterations", iteration);
+            AethelonCore.LOGGER.debug("Final load order: {}", loadOrder);
         }
     }
     
@@ -172,14 +216,75 @@ public class ModuleLoader {
      * @return true if module can be loaded now
      */
     private boolean canLoadModule(String moduleName, Set<String> loadedModules) {
-        // Sub-modules depend on their phase module
-        if (moduleName.contains(".")) {
-            String phase = moduleName.split("\\.")[0];
-            return loadedModules.contains(phase);
+        try {
+            // Try to instantiate the module to check its dependencies
+            Map<String, String> moduleClasses = getAvailableModules();
+            String className = moduleClasses.get(moduleName);
+            
+            if (className != null) {
+                Class<?> moduleClass = Class.forName(className);
+                Object moduleInstance = moduleClass.getDeclaredConstructor().newInstance();
+                
+                if (moduleInstance instanceof AethelonModule) {
+                    AethelonModule module = (AethelonModule) moduleInstance;
+                    List<String> dependencies = module.getDependencies();
+                    
+                    // Check if all dependencies are loaded
+                    for (String dependency : dependencies) {
+                        if (!loadedModules.contains(dependency)) {
+                            if (configManager.getDebugConfig().logModuleLoading) {
+                                AethelonCore.LOGGER.debug("Module '{}' cannot load: missing dependency '{}'", 
+                                    moduleName, dependency);
+                            }
+                            return false;
+                        }
+                    }
+                    
+                    if (configManager.getDebugConfig().logModuleLoading) {
+                        AethelonCore.LOGGER.debug("Module '{}' dependencies satisfied: {}", 
+                            moduleName, dependencies);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            if (configManager.getDebugConfig().logModuleLoading) {
+                AethelonCore.LOGGER.debug("Failed to check dependencies for module '{}', using fallback: {}", 
+                    moduleName, e.getMessage());
+            }
+            // If we can't instantiate the module, fall back to simple phase check
+            if (moduleName.contains(".")) {
+                String phase = moduleName.split("\\.")[0];
+                return loadedModules.contains(phase);
+            }
         }
         
         // Phase modules can be loaded immediately if enabled
         return true;
+    }
+    
+    /**
+     * Get the dependencies for a module without initializing it
+     * 
+     * @param moduleName Name of the module
+     * @param moduleClasses Map of module names to class names
+     * @return List of dependencies, or empty list if cannot determine
+     */
+    private List<String> getModuleDependencies(String moduleName, Map<String, String> moduleClasses) {
+        try {
+            String className = moduleClasses.get(moduleName);
+            if (className != null) {
+                Class<?> moduleClass = Class.forName(className);
+                Object moduleInstance = moduleClass.getDeclaredConstructor().newInstance();
+                
+                if (moduleInstance instanceof AethelonModule) {
+                    AethelonModule module = (AethelonModule) moduleInstance;
+                    return module.getDependencies();
+                }
+            }
+        } catch (Exception e) {
+            // Ignore errors when getting dependencies for debugging
+        }
+        return new ArrayList<>();
     }
     
     /**

@@ -1,0 +1,35 @@
+{
+  "version": "2.0.0",
+  "phases": {
+    "phase1": {
+      "enabled": true,
+      "modules": {
+        "entity": true,
+        "spawn": true,
+        "client": true
+      },
+      "enableNaturalSpawning": false,
+      "spawnWeight": 5,
+      "minGroupSize": 1,
+      "maxGroupSize": 1
+    }
+  },
+  "debug": {
+    "logModuleLoading": false,
+    "logConfigSummary": true
+  },
+  "legacy": {
+    "forceLegacyModules": false,
+    "showDeprecationWarnings": true
+  },
+  "performance": {
+    "maxEntitiesPerChunk": 2,
+    "maxTotalEntities": 50,
+    "entityTickInterval": 1,
+    "levelOfDetail": true,
+    "maxRenderDistance": 256,
+    "enableCulling": true,
+    "pathfindingCacheSize": 1000,
+    "asyncProcessing": true
+  }
+}

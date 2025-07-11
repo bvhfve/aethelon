@@ -16,10 +16,10 @@
 	"environment": "*",
 	"entrypoints": {
 		"main": [
-			"com.bvhfve.aethelon.Aethelon"
+			"com.bvhfve.aethelon.core.AethelonCoreEnhanced"
 		],
 		"client": [
-			"com.bvhfve.aethelon.client.AethelonClient"
+			"com.bvhfve.aethelon.core.AethelonCoreEnhanced"
 		]
 	},
 	"mixins": [
