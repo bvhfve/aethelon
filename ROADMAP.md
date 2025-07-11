@@ -1,308 +1,415 @@
-# Aethelon Mod Development Roadmap
+# Aethelon Mod Development Roadmap - Modular Architecture
 
 ## Mod Summary: Aethelon, the World Turtle
 
-The Aethelon mod introduces a colossal, passive world turtle entity that carries a functional, self-contained island on its back. This island is a dynamic structure, loaded from .nbt files, that is captured and re-pasted block-by-block whenever the Aethelon moves. The turtle's behavior is governed by a simple state machine, causing it to idle for long periods before pathfinding through deep oceans to a new coastal location. Players can trigger its movement by damaging it, and killing the Aethelon results in a massive, configurable TNT explosion that destroys the entire island. Aethelons spawn rarely in specific biomes, with their global population and minimum distance being strictly controlled to maintain world balance and a sense of discovery.
+The Aethelon mod introduces a colossal, passive world turtle entity that carries a functional, self-contained island on its back. This island is a dynamic structure, loaded from .nbt files, that is captured and re-pasted block-by-block whenever the Aethelon moves. The turtle's behavior is governed by a simple state machine, causing it to idle for long periods before pathfinding through deep oceans to a new coastal location. Players can trigger its movement by damaging it, and killing the Aethelon destroys the island in a spectacular explosion.
 
-## Technical Architecture
+## Modular Architecture
 
-**Based on Knowledge Pool Analysis:**
-- **Entity Framework**: Fabric EntityTypeBuilder with custom MobEntity extension
-- **AI System**: Custom Goal-based AI with state machine (IDLE, MOVING, TRANSITIONING)
+**Core System:**
+- **AethelonCore** - Main mod coordination and module loading
+- **ConfigManager** - JSON-based configuration with phase/module toggles
+- **RegistryManager** - Centralized registry coordination with dependency resolution
+- **ModuleLoader** - Dynamic module loading with dependency resolution
+
+**Technical Foundation:**
+- **Entity Framework**: Fabric EntityTypeBuilder with custom WaterCreatureEntity extension
+- **AI System**: Custom Goal-based AI with state machine (IDLE, MOVING, TRANSITIONING, DAMAGED)
 - **Biome Integration**: Fabric BiomeModifications API for spawn control
 - **Structure System**: StructureTemplate for .nbt loading and block-by-block operations
 - **Event Handling**: Fabric lifecycle events for damage detection and world persistence
-- **Configuration**: JSON-based config with runtime reloading
+- **Configuration**: JSON-based config with runtime reloading and module toggles
+
+**Module Structure:**
+```
+core/                    # Always enabled core systems
+phase1/                  # Basic Entity Foundation
+├── entity/             # Entity registration and attributes
+├── client/             # Client-side rendering and models
+└── spawn/              # Biome spawning and spawn eggs
+phase2/                  # Entity Behavior & Movement
+├── ai/                 # AI goals and behavior trees
+├── state/              # State management and transitions
+└── pathfinding/        # Movement and navigation systems
+[additional phases...]
+```
 
 ## Development Phases
 
-### **Phase 1: Basic Entity Foundation**
+### **Phase 1: Basic Entity Foundation** ✅
 **Goal**: Create a basic turtle entity that spawns and exists in the world
 
-**Tasks:**
-- Create the main mod class (`Aethelon.java`) using ModInitializer pattern
-- Create basic `AethelonEntity` class extending `WaterCreatureEntity` or `MobEntity`
-- Implement entity registration using `FabricEntityTypeBuilder` pattern
-- Create simple entity model and renderer using Fabric rendering APIs
-- Add basic spawn conditions targeting deep ocean biomes via `BiomeModifications`
-- Set up entity attributes (health, size, movement speed)
+**Module Structure:**
+```
+phase1/
+├── Phase1Module.java           # Phase coordinator and lifecycle management
+├── entity/
+│   ├── EntityModule.java       # Entity registration and attributes
+│   ├── EntityTypeProvider.java # Entity type creation and access
+│   └── AethelonEntity.java     # Core entity implementation
+├── client/
+│   ├── ClientModule.java       # Client-side coordination
+│   ├── model/
+│   │   ├── ModelModule.java    # Model registration and layers
+│   │   └── AethelonEntityModel.java # 3D turtle model
+│   └── render/
+│       └── AethelonEntityRenderer.java # Entity rendering
+└── spawn/
+    ├── SpawnModule.java        # Spawn system coordination
+    ├── BiomeSpawnManager.java  # Biome modification logic
+    └── SpawnEggProvider.java   # Spawn egg registration
+```
 
-**Success Criteria:**
-- Entity spawns in deep ocean biomes
-- Basic model renders correctly with proper hitbox
-- Entity has appropriate water creature behavior
-- No compilation errors
+**Implementation Details:**
+- **Entity Registration**: Custom WaterCreatureEntity with 1000 HP, slow movement speed
+- **Client Rendering**: Large turtle model with shell details and animations
+- **Spawn System**: Deep ocean biome spawning with configurable rates
+- **Configuration**: Phase-level and module-level toggles
 
-**Reference Patterns:**
-- UntitledDuckMod entity registration
-- Fabric EntityTypeBuilder API
-- Fabric BiomeModifications for spawning
+**Dependencies**: None (foundation phase)
+**Status**: Core entity and registration complete, client and spawn modules in progress
 
 ---
 
 ### **Phase 2: Entity Behavior & Movement**
-**Goal**: Implement the turtle's basic AI and movement patterns
+**Goal**: Implement AI behavior, state management, and basic movement
 
-**Tasks:**
-- Create custom AI goals extending `Goal` class (IdleGoal, PathfindGoal, TransitionGoal)
-- Implement state machine using enum (IDLE, MOVING, TRANSITIONING, DAMAGED)
-- Add pathfinding logic for deep ocean to coastal movement using aquatic navigation
-- Implement timer-based behavior with configurable idle periods (20-60 minutes)
-- Add basic collision detection and obstacle avoidance
-- Create custom movement speed modifiers for different states
+**Module Structure:**
+```
+phase2/
+├── Phase2Module.java           # Phase coordinator and lifecycle management
+├── ai/
+│   ├── AiModule.java          # AI system coordination
+│   ├── goals/
+│   │   ├── GoalModule.java    # Goal registration and management
+│   │   ├── IdleGoal.java      # Idle behavior implementation
+│   │   └── WanderGoal.java    # Basic wandering behavior
+│   └── behavior/
+│       ├── BehaviorModule.java # Behavior tree coordination
+│       └── StateMachine.java   # Entity state management
+├── state/
+│   ├── StateModule.java       # State system coordination
+│   ├── StateManager.java      # State transition logic
+│   └── states/
+│       ├── IdleState.java     # Idle state implementation
+│       ├── MovingState.java   # Movement state implementation
+│       └── TransitionState.java # State transition handling
+└── pathfinding/
+    ├── PathfindingModule.java # Navigation system coordination
+    ├── OceanPathfinder.java   # Deep ocean navigation
+    └── MovementController.java # Movement execution
+```
 
-**Success Criteria:**
-- Turtle moves naturally between locations with proper timing
-- State transitions work correctly with visual/audio feedback
-- Pathfinding functions in ocean environments without getting stuck
-- Idle periods are appropriately long and varied
+**Implementation Details:**
+- **AI Goals**: Custom goal system for long idle periods and movement triggers
+- **State Machine**: IDLE, MOVING, TRANSITIONING, DAMAGED states with transitions
+- **Pathfinding**: Ocean-specific navigation avoiding shallow water and land
+- **Movement**: Slow, deliberate movement with turning animations
 
-**Reference Patterns:**
-- SmartBrainLib behavior system
-- Vanilla aquatic entity AI goals
-- Custom Goal implementations
+**Dependencies**: Phase 1 (entity foundation)
+**Status**: Not started
 
 ---
 
 ### **Phase 3: Damage Response & Player Interaction**
-**Goal**: Make the turtle respond to player actions
+**Goal**: Handle player damage, implement movement triggers, and basic interactions
 
-**Tasks:**
-- Implement damage detection using Fabric entity events
-- Add forced movement trigger when damaged (interrupt idle state)
-- Create health system with massive HP pool (1000+ health)
-- Add basic particle effects for interactions (damage, state changes)
-- Implement death mechanics (without explosion yet) with proper cleanup
-- Add damage immunity periods to prevent exploitation
-- Create visual feedback for damage (screen shake, particles)
+**Module Structure:**
+```
+phase3/
+├── Phase3Module.java           # Phase coordinator and lifecycle management
+├── damage/
+│   ├── DamageModule.java      # Damage system coordination
+│   ├── DamageHandler.java     # Damage event processing
+│   └── DamageStateManager.java # Damage-triggered state changes
+├── interaction/
+│   ├── InteractionModule.java # Player interaction coordination
+│   ├── PlayerDetection.java   # Player proximity detection
+│   └── InteractionHandler.java # Right-click and other interactions
+└── triggers/
+    ├── TriggerModule.java     # Movement trigger coordination
+    ├── DamageTrigger.java     # Damage-based movement activation
+    └── TimerTrigger.java      # Time-based movement activation
+```
 
-**Success Criteria:**
-- Players can interact with and influence turtle behavior
-- Damage triggers appropriate state transitions and movement
-- Health system functions correctly with proper scaling
-- Visual feedback is clear and impactful
+**Implementation Details:**
+- **Damage Detection**: Listen for damage events and trigger movement
+- **Player Interaction**: Basic right-click interactions and proximity detection
+- **Movement Triggers**: Multiple ways to activate turtle movement
+- **State Integration**: Connect damage events to Phase 2 state machine
 
-**Reference Patterns:**
-- Fabric entity event system
-- Vanilla boss entity damage handling
-- Particle effect APIs
+**Dependencies**: Phase 1 (entity), Phase 2 (behavior)
+**Status**: Not started
 
 ---
 
 ### **Phase 4: Island Structure System**
-**Goal**: Add the island that sits on the turtle's back
+**Goal**: Implement island loading, storage, and basic management
 
-**Tasks:**
-- Create island structure loading system using `StructureTemplate` for .nbt files
-- Implement block-by-block island placement on turtle spawn with proper offset calculation
-- Add island positioning relative to turtle's back using entity attachment system
-- Create basic island templates (small, medium, large variants)
-- Implement structure validation and error handling
-- Add island bounds detection for collision and interaction
+**Module Structure:**
+```
+phase4/
+├── Phase4Module.java           # Phase coordinator and lifecycle management
+├── structure/
+│   ├── StructureModule.java   # Structure system coordination
+│   ├── IslandLoader.java      # NBT structure loading
+│   ├── IslandStorage.java     # Island data persistence
+│   └── StructureValidator.java # Island structure validation
+├── attachment/
+│   ├── AttachmentModule.java  # Island attachment coordination
+│   ├── AttachmentPoint.java   # Turtle-island connection point
+│   └── OffsetManager.java     # Relative positioning system
+└── management/
+    ├── ManagementModule.java  # Island lifecycle coordination
+    ├── IslandRegistry.java    # Track loaded islands
+    └── IslandMetadata.java    # Island properties and data
+```
 
-**Success Criteria:**
-- Turtle spawns with a functional island on its back
-- Island structures load correctly from .nbt files without corruption
-- Island positioning is accurate, stable, and moves with turtle
-- Multiple island variants work correctly
+**Implementation Details:**
+- **NBT Loading**: Load island structures from .nbt files
+- **Attachment System**: Attach islands to turtle entities with proper offsets
+- **Data Persistence**: Save/load island state with world data
+- **Structure Validation**: Ensure island structures are valid and safe
 
-**Reference Patterns:**
-- StructureTemplate API usage
-- Structure block entity mechanics
-- NBT file handling patterns
+**Dependencies**: Phase 1 (entity foundation)
+**Status**: Not started
 
 ---
 
 ### **Phase 5: Dynamic Island Movement**
-**Goal**: Make the island move with the turtle
+**Goal**: Implement block-by-block island capture and placement during movement
 
-**Tasks:**
-- Implement island capture system using `StructureTemplate.recordBlocksAndEntities()`
-- Create island re-placement system with proper world coordinate translation
-- Add smooth transition mechanics with gradual block placement/removal
-- Implement block-by-block copying with tick-based processing to prevent lag
-- Handle chunk loading/unloading during movement with proper async operations
-- Add backup/restore system for movement failures
-- Implement entity preservation (items, mobs on island)
+**Module Structure:**
+```
+phase5/
+├── Phase5Module.java           # Phase coordinator and lifecycle management
+├── capture/
+│   ├── CaptureModule.java     # Block capture coordination
+│   ├── BlockCapture.java      # Individual block capture logic
+│   ├── ChunkCapture.java      # Chunk-based capture optimization
+│   └── CaptureValidator.java  # Validate captured blocks
+├── placement/
+│   ├── PlacementModule.java   # Block placement coordination
+│   ├── BlockPlacer.java       # Individual block placement logic
+│   ├── PlacementQueue.java    # Async placement queue
+│   └── PlacementValidator.java # Validate block placement
+└── synchronization/
+    ├── SyncModule.java        # Movement synchronization
+    ├── MovementSync.java      # Sync island with turtle movement
+    └── PerformanceManager.java # Performance optimization
+```
 
-**Success Criteria:**
-- Island successfully moves with turtle without corruption or data loss
-- Block data, NBT data, and entities are preserved during movement
-- Chunk operations are handled properly without causing lag
-- Movement is visually smooth and doesn't break immersion
+**Implementation Details:**
+- **Block Capture**: Capture island blocks before turtle movement
+- **Block Placement**: Place blocks at new turtle position
+- **Performance**: Async processing and chunk-based operations
+- **Synchronization**: Keep island perfectly aligned with turtle
 
-**Reference Patterns:**
-- StructureTemplate capture/place mechanics
-- Chunk loading management
-- Async block operations
+**Dependencies**: Phase 2 (movement), Phase 4 (island system)
+**Status**: Not started
 
 ---
 
 ### **Phase 6: Explosion & Destruction System**
-**Goal**: Implement the dramatic death mechanics
+**Goal**: Implement spectacular island destruction when turtle dies
 
-**Tasks:**
-- Create configurable explosion system using custom explosion logic
-- Implement island destruction on turtle death with proper block removal
-- Add explosion size and power configuration (radius, damage, effects)
-- Create dramatic visual and audio effects (particles, screen shake, sounds)
-- Implement cleanup systems for destroyed blocks and dropped items
-- Add explosion immunity for certain blocks (bedrock, etc.)
-- Create loot drop system for turtle death rewards
+**Module Structure:**
+```
+phase6/
+├── Phase6Module.java           # Phase coordinator and lifecycle management
+├── explosion/
+│   ├── ExplosionModule.java   # Explosion system coordination
+│   ├── ExplosionManager.java  # Explosion sequence management
+│   ├── ExplosionEffects.java  # Visual and audio effects
+│   └── ExplosionPhysics.java  # Block destruction physics
+├── destruction/
+│   ├── DestructionModule.java # Destruction coordination
+│   ├── IslandDestroyer.java   # Island destruction logic
+│   ├── BlockScatter.java      # Scattered block physics
+│   └── DropManager.java       # Item drop handling
+└── effects/
+    ├── EffectsModule.java     # Visual effects coordination
+    ├── ParticleEffects.java   # Particle system integration
+    ├── SoundEffects.java      # Sound effect management
+    └── ScreenShake.java       # Camera shake effects
+```
 
-**Success Criteria:**
-- Turtle death creates spectacular, configurable explosion
-- Island is properly destroyed with appropriate visual feedback
-- Visual effects are impressive and performant
-- Explosion mechanics are balanced and configurable
+**Implementation Details:**
+- **Death Detection**: Listen for turtle death events
+- **Explosion Sequence**: Multi-stage explosion with escalating effects
+- **Block Physics**: Realistic block scattering and destruction
+- **Visual Effects**: Particles, sounds, and screen effects
 
-**Reference Patterns:**
-- Vanilla explosion mechanics
-- Custom particle systems
-- Block destruction algorithms
+**Dependencies**: Phase 1 (entity), Phase 4 (island system)
+**Status**: Not started
 
 ---
 
 ### **Phase 7: Spawn Control & Population Management**
-**Goal**: Implement sophisticated spawn mechanics
+**Goal**: Implement intelligent spawning and population limits
 
-**Tasks:**
-- Create global population tracking using persistent world data
-- Implement minimum distance constraints (5000+ blocks) between turtles
-- Add biome-specific spawn conditions using `BiomeSelectors.foundInOverworld()`
-- Create rarity controls with configurable spawn rates (1 per 10000 chunks)
-- Implement world data persistence using `PersistentState` for turtle tracking
-- Add spawn attempt logging and debugging tools
-- Create admin commands for manual spawn management
+**Module Structure:**
+```
+phase7/
+├── Phase7Module.java           # Phase coordinator and lifecycle management
+├── spawning/
+│   ├── SpawningModule.java    # Spawn system coordination
+│   ├── SpawnController.java   # Intelligent spawn control
+│   ├── BiomeSpawning.java     # Biome-specific spawn rules
+│   └── SpawnConditions.java   # Environmental spawn conditions
+├── population/
+│   ├── PopulationModule.java  # Population management
+│   ├── PopulationTracker.java # Track turtle populations
+│   ├── PopulationLimits.java  # Enforce population limits
+│   └── DistributionManager.java # Geographic distribution
+└── migration/
+    ├── MigrationModule.java   # Migration system coordination
+    ├── MigrationRoutes.java   # Predefined migration paths
+    └── SeasonalMigration.java # Time-based migration patterns
+```
 
-**Success Criteria:**
-- Spawn system maintains proper population (max 3-5 per world)
-- Distance constraints are enforced reliably
-- Population data persists across world sessions and server restarts
-- Spawn rates are balanced and configurable
+**Implementation Details:**
+- **Smart Spawning**: Prevent overcrowding and ensure proper distribution
+- **Population Limits**: Configurable limits per dimension/biome
+- **Migration Patterns**: Seasonal or event-based turtle migration
+- **Spawn Conditions**: Complex environmental requirements
 
-**Reference Patterns:**
-- Fabric BiomeModifications spawn control
-- PersistentState for world data
-- Custom spawn condition logic
+**Dependencies**: Phase 1 (entity), Phase 2 (movement)
+**Status**: Not started
 
 ---
 
 ### **Phase 8: Configuration & Balancing**
-**Goal**: Make the mod highly configurable
+**Goal**: Comprehensive configuration system and gameplay balancing
 
-**Tasks:**
-- Create comprehensive config file system using JSON/TOML format
-- Add all major parameters as configurable options (spawn rates, health, movement, etc.)
-- Implement in-game admin commands for testing and management
-- Add debug modes and comprehensive logging system
-- Create default balanced configurations for different server types
-- Add runtime config reloading without restart
-- Implement config validation and error handling
+**Module Structure:**
+```
+phase8/
+├── Phase8Module.java           # Phase coordinator and lifecycle management
+├── config/
+│   ├── ConfigModule.java      # Configuration system coordination
+│   ├── GameplayConfig.java    # Gameplay balance settings
+│   ├── PerformanceConfig.java # Performance optimization settings
+│   └── ConfigValidator.java   # Configuration validation
+├── balancing/
+│   ├── BalancingModule.java   # Balance system coordination
+│   ├── EntityBalance.java     # Entity stats and behavior balance
+│   ├── SpawnBalance.java      # Spawn rate and distribution balance
+│   └── PerformanceBalance.java # Performance vs features balance
+└── presets/
+    ├── PresetModule.java      # Configuration preset coordination
+    ├── PresetManager.java     # Preset loading and saving
+    └── DefaultPresets.java    # Built-in configuration presets
+```
 
-**Success Criteria:**
-- All systems work with various configuration settings
-- Config changes take effect properly (runtime reloading)
-- Debug tools are functional and provide useful information
-- Configuration is intuitive and well-documented
+**Implementation Details:**
+- **Comprehensive Config**: All aspects configurable via JSON
+- **Runtime Updates**: Hot-reload configuration changes
+- **Balance Presets**: Easy, Normal, Hard, Custom difficulty presets
+- **Performance Tuning**: Configurable performance optimizations
 
-**Reference Patterns:**
-- Fabric config API patterns
-- Command registration system
-- Runtime configuration management
+**Dependencies**: All previous phases (configuration affects everything)
+**Status**: Not started
 
 ---
 
 ### **Phase 9: Polish & Optimization**
-**Goal**: Optimize performance and add final touches
+**Goal**: Performance optimization, bug fixes, and user experience improvements
 
-**Tasks:**
-- Optimize chunk loading and block operations
-- Add sound effects and ambient audio
-- Implement advanced particle systems
-- Add loot tables and rewards
-- Optimize entity AI and pathfinding
+**Module Structure:**
+```
+phase9/
+├── Phase9Module.java           # Phase coordinator and lifecycle management
+├── performance/
+│   ├── PerformanceModule.java # Performance system coordination
+│   ├── ChunkOptimization.java # Chunk loading optimization
+│   ├── RenderOptimization.java # Client rendering optimization
+│   └── MemoryOptimization.java # Memory usage optimization
+├── polish/
+│   ├── PolishModule.java      # Polish system coordination
+│   ├── AnimationPolish.java   # Smooth animations and transitions
+│   ├── EffectPolish.java      # Enhanced visual effects
+│   └── SoundPolish.java       # Audio improvements
+└── debugging/
+    ├── DebuggingModule.java   # Debug system coordination
+    ├── DebugRenderer.java     # Visual debugging tools
+    ├── PerformanceProfiler.java # Performance profiling
+    └── LoggingEnhancement.java # Enhanced logging system
+```
 
-**Success Criteria:**
-- Mod runs smoothly in various scenarios
-- Performance is acceptable on average hardware
-- Audio and visual polish is complete
+**Implementation Details:**
+- **Performance Profiling**: Identify and fix performance bottlenecks
+- **Visual Polish**: Smooth animations, better effects, improved models
+- **Debug Tools**: In-game debugging and profiling tools
+- **Code Optimization**: Refactor and optimize existing code
+
+**Dependencies**: All previous phases (optimization affects everything)
+**Status**: Not started
 
 ---
 
 ### **Phase 10: Advanced Features & Integration**
-**Goal**: Add sophisticated features and mod compatibility
+**Goal**: Advanced features, mod compatibility, and ecosystem integration
 
-**Tasks:**
-- Implement structure variety (multiple island types)
-- Add seasonal or time-based behaviors
-- Create integration hooks for other mods
-- Add advanced player interaction systems
-- Implement data pack support for custom islands
+**Module Structure:**
+```
+phase10/
+├── Phase10Module.java          # Phase coordinator and lifecycle management
+├── advanced/
+│   ├── AdvancedModule.java    # Advanced features coordination
+│   ├── MultiTurtle.java       # Multiple turtle interactions
+│   ├── TurtleEvolution.java   # Turtle growth and evolution
+│   └── IslandCustomization.java # Advanced island features
+├── integration/
+│   ├── IntegrationModule.java # Mod integration coordination
+│   ├── BiomeModIntegration.java # Biome mod compatibility
+│   ├── StructureModIntegration.java # Structure mod compatibility
+│   └── ApiIntegration.java    # External API integration
+├── ecosystem/
+│   ├── EcosystemModule.java   # Ecosystem coordination
+│   ├── IslandEcosystem.java   # Island-specific ecosystems
+│   ├── MarineLife.java        # Ocean ecosystem integration
+│   └── WeatherIntegration.java # Weather system integration
+└── api/
+    ├── ApiModule.java         # Public API coordination
+    ├── AethelonApi.java       # Main API interface
+    ├── EventApi.java          # Event system API
+    └── DataApi.java           # Data access API
+```
 
-**Success Criteria:**
-- All advanced features work seamlessly together
-- Mod compatibility is maintained
-- Data pack system is functional
+**Implementation Details:**
+- **Multi-Turtle Systems**: Turtle herds, interactions, and social behavior
+- **Mod Compatibility**: Integration with popular biome and structure mods
+- **Public API**: Allow other mods to interact with Aethelon
+- **Advanced Ecosystems**: Complex island and ocean ecosystems
 
----
-
-## Key Technical Considerations
-
-### For Each Phase:
-- Each phase must compile and run without errors
-- Extensive testing required before proceeding to next phase
-- Configuration options should be added incrementally
-- Performance monitoring throughout development
-- Backup systems for world data during island operations
-- Proper error handling and edge case management
-
-### Development Tools Needed:
-- NBT structure creation tools
-- In-game testing commands
-- Performance profiling capabilities
-- Debug visualization systems
-
-### Technical Architecture:
-- **Loader**: Fabric 1.21.4
-- **Language**: Java 21
-- **Dependencies**: Fabric API
-- **Structure Format**: NBT files
-- **Configuration**: JSON/TOML based
-- **Data Persistence**: World save data
-
-## Development Guidelines
-
-1. **Testing Protocol**: Each phase must be thoroughly tested before moving to the next
-2. **Version Control**: Commit after each successful phase completion
-3. **Documentation**: Update documentation as features are added
-4. **Performance**: Monitor performance impact at each phase
-5. **Compatibility**: Ensure compatibility with base Minecraft and Fabric API
-6. **Error Handling**: Implement robust error handling for all systems
-7. **Configuration**: Make systems configurable from the start
-8. **Logging**: Add comprehensive logging for debugging
-
-## Current Status
-
-- **Phase**: Roadmap Refined - Ready for Implementation
-- **Next Action**: Create project structure, then begin Phase 1 - Basic Entity Foundation
-- **Dependencies**: Project structure setup required
-
-## Implementation Priority
-
-**Immediate Next Steps:**
-1. Create project source structure and basic files
-2. Set up entity registration framework
-3. Implement basic entity class with minimal functionality
-4. Add simple model and renderer
-5. Test basic spawning in creative mode
-
-**Critical Success Factors:**
-- Follow established Fabric patterns from knowledge pool
-- Implement robust error handling from the start
-- Design for configurability and extensibility
-- Test each phase thoroughly before proceeding
+**Dependencies**: All previous phases (builds upon complete foundation)
+**Status**: Not started
 
 ---
 
-*This roadmap serves as the master plan for Aethelon mod development. Each phase builds upon the previous one, ensuring a stable and functional mod at every step.*
+## Module Dependencies
+
+**Dependency Graph:**
+```
+Core System (always enabled)
+├── Phase 1: Entity Foundation
+│   ├── Phase 2: Behavior & Movement
+│   │   ├── Phase 3: Damage & Interaction
+│   │   ├── Phase 5: Dynamic Movement (also needs Phase 4)
+│   │   └── Phase 7: Spawn Control
+│   ├── Phase 4: Island System
+│   │   ├── Phase 5: Dynamic Movement (also needs Phase 2)
+│   │   └── Phase 6: Explosion System
+│   ├── Phase 8: Configuration (affects all phases)
+│   ├── Phase 9: Polish & Optimization (affects all phases)
+│   └── Phase 10: Advanced Features (needs most other phases)
+```
+
+**Configuration Control:**
+- Each phase can be independently enabled/disabled
+- Sub-modules within phases can be individually controlled
+- Dependency validation ensures required phases are enabled
+- Graceful degradation when dependencies are missing
+
+**Next Steps**: Complete Phase 1 client and spawn modules, then proceed with Phase 2 implementation using the established modular patterns.

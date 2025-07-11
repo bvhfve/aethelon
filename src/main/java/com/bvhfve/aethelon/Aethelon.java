@@ -1,31 +1,31 @@
 package com.bvhfve.aethelon;
 
-import com.bvhfve.aethelon.registry.ModBiomeModifications;
-import com.bvhfve.aethelon.registry.ModEntityTypes;
-import com.bvhfve.aethelon.registry.ModItems;
-import net.fabricmc.api.ModInitializer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.bvhfve.aethelon.core.AethelonCore;
 
 /**
- * Main mod class for Aethelon - The World Turtle mod
+ * Aethelon - Legacy main mod class (redirects to modular core)
  * 
- * This mod introduces colossal turtle entities that carry functional islands
- * on their backs, creating a unique and dynamic world experience.
+ * MINECRAFT INTEGRATION:
+ * - Implements: ModInitializer (Fabric API entry point)
+ * - Hooks into: Fabric mod loading lifecycle
+ * - Modifies: None (delegates to AethelonCore)
+ * 
+ * MODULE ROLE:
+ * - Purpose: Maintain compatibility with existing fabric.mod.json entry point
+ * - Dependencies: AethelonCore
+ * - Provides: Legacy entry point, delegation to modular system
+ * 
+ * VERSION COMPATIBILITY:
+ * - Minecraft: 1.21.4+
+ * - Fabric API: 0.119.2+
+ * - Breaking changes: None (stable delegation pattern)
+ * 
+ * REFACTORING NOTE:
+ * This class now serves as a compatibility layer that delegates to the new
+ * modular AethelonCore system. This allows existing configurations to work
+ * while providing the new modular architecture benefits.
  */
-public class Aethelon implements ModInitializer {
-    public static final String MOD_ID = "aethelon";
-    public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
-
-    @Override
-    public void onInitialize() {
-        LOGGER.info("Initializing Aethelon - The World Turtle mod");
-        
-        // Phase 1: Basic Entity Foundation
-        ModEntityTypes.registerEntityTypes();
-        ModItems.registerItems();
-        ModBiomeModifications.registerSpawnConditions();
-        
-        LOGGER.info("Aethelon mod initialization complete");
-    }
+public class Aethelon extends AethelonCore {
+    // This class now extends AethelonCore to maintain compatibility
+    // while providing the new modular architecture
 }
